@@ -1,0 +1,5 @@
+Django>=6.0.3
+mysqlclient>=2.2.8
+pillow>=12.1.1
+python-decouple>=3.8
+reportlab>=4.0.9

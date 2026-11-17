@@ -1,0 +1,170 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Oggi Admin — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="{% static 'aluguel/css/dashboard.css' %}">
+</head>
+<body>
+
+<header class="dash-top">
+  <div class="dash-brand">
+    <span class="dash-logo">&#127846;</span>
+    <div>
+      <strong>Oggi Admin</strong>
+      <small>Dashboard</small>
+    </div>
+  </div>
+  <nav class="dash-links">
+    <a href="/painel/">Painel</a>
+    <a href="/" target="_blank" rel="noopener">Site</a>
+  </nav>
+</header>
+
+<main class="dash-main">
+
+  <section class="dash-head">
+    <div>
+      <h1>Dashboard &mdash; {{ mes_nome }} / {{ ano }}</h1>
+      <p>Reservas, receita e ocupa&ccedil;&atilde;o da frota no per&iacute;odo selecionado.</p>
+    </div>
+    <div class="dash-acoes">
+      <a class="btn btn-ghost" href="{% url 'dashboard' %}?ano={{ anterior.0 }}&mes={{ anterior.1 }}&status={{ status }}">&lsaquo; Anterior</a>
+      <a class="btn btn-ghost" href="{% url 'dashboard' %}?ano={{ seguinte.0 }}&mes={{ seguinte.1 }}&status={{ status }}">Pr&oacute;ximo &rsaquo;</a>
+      <a class="btn btn-export" href="{% url 'dashboard_export_csv' %}?ano={{ ano }}&mes={{ mes }}&status={{ status }}">&#8681; CSV</a>
+      <a class="btn btn-export btn-pdf" href="{% url 'dashboard_export_pdf' %}?ano={{ ano }}&mes={{ mes }}&status={{ status }}">&#8681; PDF</a>
+    </div>
+  </section>
+
+  <form class="dash-filtros" method="get" action="{% url 'dashboard' %}">
+    <input type="hidden" name="ano" value="{{ ano }}">
+    <input type="hidden" name="mes" value="{{ mes }}">
+    <label for="status">Status</label>
+    <select id="status" name="status" onchange="this.form.submit()">
+      {% for valor, rotulo in status_opcoes %}
+        <option value="{{ valor }}" {% if valor == status %}selected{% endif %}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button class="btn btn-ghost" type="submit">Filtrar</button></noscript>
+  </form>
+
+  <section class="metricas">
+    <article class="metrica">
+      <span class="metrica-rotulo">Reservas no per&iacute;odo</span>
+      <strong>{{ reservas|length }}</strong>
+      <small>{{ dias_com_reserva }} dia(s) com evento</small>
+    </article>
+    <article class="metrica ok">
+      <span class="metrica-rotulo">Confirmadas</span>
+      <strong>{{ confirmadas|length }}</strong>
+      <small>Receita {{ receita_fmt }}</small>
+    </article>
+    <article class="metrica aviso">
+      <span class="metrica-rotulo">Pendentes</span>
+      <strong>{{ pendentes|length }}</strong>
+      <small>Potencial {{ receita_pendente_fmt }}</small>
+    </article>
+    <article class="metrica ruim">
+      <span class="metrica-rotulo">Canceladas</span>
+      <strong>{{ canceladas|length }}</strong>
+      <small>&mdash;</small>
+    </article>
+    <article class="metrica">
+      <span class="metrica-rotulo">Ticket m&eacute;dio</span>
+      <strong>{{ ticket_fmt }}</strong>
+      <small>Por reserva confirmada</small>
+    </article>
+    <article class="metrica">
+      <span class="metrica-rotulo">Ocupa&ccedil;&atilde;o m&eacute;dia</span>
+      <strong>{{ ocupacao }}%</strong>
+      <small>Capacidade {{ capacidade }} carrinho(s)/dia</small>
+    </article>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Ocupa&ccedil;&atilde;o por dia</h2>
+      <span class="card-sub">Barras cheias indicam frota esgotada na data.</span>
+    </div>
+    <div class="grafico">
+      {% for ponto in serie %}
+        <div class="barra-col" title="Dia {{ ponto.dia }} — {{ ponto.ocupados }} carrinho(s) ocupado(s)">
+          <div class="barra{% if ponto.percentual >= 100 %} cheia{% elif ponto.percentual >= 40 %} media{% elif ponto.ocupados > 0 %} baixa{% endif %}"
+               style="height: {{ ponto.percentual }}%"></div>
+          <span>{{ ponto.dia }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="duas-colunas">
+    <section class="card">
+      <div class="card-head"><h2>Top sabores</h2></div>
+      {% if top_sabores %}
+        <table>
+          <thead><tr><th>Sabor</th><th>Unidades</th></tr></thead>
+          <tbody>
+          {% for item in top_sabores %}
+            <tr>
+              <td>{{ item.id_sorvete__nome_sorvete|default:"—" }}</td>
+              <td>{{ item.qtd }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="vazio">Nenhum sabor registrado no per&iacute;odo.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Resumo financeiro</h2></div>
+      <dl class="fin">
+        <dt>Receita confirmada</dt><dd>{{ receita_fmt }}</dd>
+        <dt>Receita pendente</dt><dd>{{ receita_pendente_fmt }}</dd>
+        <dt>Ticket m&eacute;dio</dt><dd>{{ ticket_fmt }}</dd>
+        <dt>Ocupa&ccedil;&atilde;o m&eacute;dia</dt><dd>{{ ocupacao }}%</dd>
+      </dl>
+      <div class="fin-acoes">
+        <a class="btn btn-export" href="{% url 'dashboard_export_csv' %}?ano={{ ano }}&mes={{ mes }}&status={{ status }}">Baixar CSV</a>
+        <a class="btn btn-export btn-pdf" href="{% url 'dashboard_export_pdf' %}?ano={{ ano }}&mes={{ mes }}&status={{ status }}">Baixar PDF</a>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Reservas do per&iacute;odo</h2>
+      <span class="card-sub">{{ tabela|length }} registro(s)</span>
+    </div>
+    {% if tabela %}
+      <div class="tabela-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Data</th><th>Cliente</th><th>Carrinhos</th><th>Total</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+          {% for linha in tabela %}
+            <tr>
+              <td>{{ linha.id }}</td>
+              <td>{{ linha.data }}</td>
+              <td>{{ linha.cliente }}</td>
+              <td>{{ linha.carrinhos }}</td>
+              <td>{{ linha.total }}</td>
+              <td><span class="tag {{ linha.status }}">{{ linha.status_label }}</span></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="vazio">Nenhuma reserva encontrada para os filtros atuais.</p>
+    {% endif %}
+  </section>
+
+</main>
+</body>
+</html>
